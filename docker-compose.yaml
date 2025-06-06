@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: quiet_grove_db_test
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: reservations
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d reservations"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+    container_name: quiet_grove_backend_test
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: admin
+      DB_PASSWORD: password
+      DB_NAME: reservations
+    volumes:
+      - ./backend/configuration.yaml:/app/configuration.yaml
+      - ./backend/credentials.yaml:/app/credentials.yaml
+      - ./backend/deploy:/app/deploy
+    ports:
+      - "8080:8080"
+
+  frontend:
+    image: node:20-alpine
+    container_name: quiet_grove_frontend
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    command: sh -c "npm i && npm run dev -- --host"
+    depends_on:
+      backend:
+        condition: service_started
+
+volumes:
+  postgres_data:

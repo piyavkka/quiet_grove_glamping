@@ -173,18 +173,18 @@ export default function Reservation() {
         const formattedCheckIn = checkIn ? format(checkIn, "yyyy-MM-dd") : null;
         const formattedCheckOut = checkOut ? format(checkOut, "yyyy-MM-dd") : null;
 
-        const saunaTimes = Object.values(selectedSaunaSlots).flatMap((set) => Array.from(set));
+        //const saunaTimes = Object.values(selectedSaunaSlots).flatMap((set) => Array.from(set));
 
-        const totalSum = calculateTotal();
+        //const totalSum = calculateTotal();
 
         const submissionData = {
             checkIn: formattedCheckIn,
             checkOut: formattedCheckOut,
             selectedHouse: selectedHouseId,
-            saunaTimes,
-            addTub,
-            fillId: addTub ? selectedFillId : null,
-            total: totalSum,
+            //saunaTimes,
+            //addTub,
+            //fillId: addTub ? selectedFillId : null,
+            //total: totalSum,
         };
 
         console.log("Отправка данных:", submissionData);

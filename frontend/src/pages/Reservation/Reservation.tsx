@@ -32,7 +32,7 @@ export default function Reservation() {
     const [houses, setHouses] = useState<House[]>([]);
     const [checkIn,  setCheckIn]  = useState<Date | null>(null);
     const [checkOut, setCheckOut] = useState<Date | null>(null);
-    const [, setGuestCount] = useState<number>(2);
+    const [guestCount, setGuestCount] = useState<number>(2);
 
     const [availableHouses, setAvailableHouses] = useState<AvailableHouse[] | null>(null);
     const [selectedHouseId, setSelectedHouseId] = useState<number | null>(null);
@@ -43,11 +43,18 @@ export default function Reservation() {
 
     const [page, setPage] = useState(0);
     const [showAlert,  setShowAlert]  = useState(false);
+    const [alertMessage, setAlertMessage] = useState<string>("");
     const [showSuccess,setShowSuccess]= useState(false);
 
     const [, setVerificationCode] = useState<string | null>(null);
 
     const location = useLocation();
+
+    const [contacts, setContacts] = useState<{
+        name: string;
+        phone: string;
+        email: string;
+    }>({ name: "", phone: "", email: "" });
 
     const fetchAvailableHouses = useCallback(
         async (inDate: Date, outDate: Date, guests: number) => {
@@ -127,16 +134,25 @@ export default function Reservation() {
     const handlePrev = () => setPage(p => Math.max(0, p - 1));
 
     const handleNext = () => {
-        if (page === 0 && selectedHouseId === null) { setShowAlert(true); return; }
-        if (page === 1 && saunaHoursCount > 0 && saunaHoursCount < 2) { setShowAlert(true); return; }
+        if (page === 0 && selectedHouseId === null) {
+            setAlertMessage("Пожалуйста, выберите даты и домик перед переходом.");
+            setShowAlert(true);
+            return;
+        }
+        if (page === 1 && saunaHoursCount > 0 && saunaHoursCount < 2) {
+            setAlertMessage("Минимальное время аренды бани — 2 часа.");
+            setShowAlert(true);
+            return;
+        }
 
         setShowAlert(false);
-        setPage(p => Math.min(2, p + 1));
+        setPage((p) => Math.min(2, p + 1));
     };
 
     const handleSubmit = ({ checkIn, checkOut, guests }: { checkIn: Date | null; checkOut: Date | null; guests: number }) => {
         setCheckIn(checkIn);
         setCheckOut(checkOut);
+        setGuestCount(guests);
 
         if (checkIn && checkOut) void fetchAvailableHouses(checkIn, checkOut, guests);
 
@@ -169,34 +185,59 @@ export default function Reservation() {
         return { total, houseCost, saunaCost, tubCost, tubFillPrice };
     };
 
-    const handleFinalSubmit = () => {
-        const formattedCheckIn = checkIn ? format(checkIn, "yyyy-MM-dd") : null;
+    const handleFinalSubmit = async () => {
+        if (!selectedHouseId) {
+            setAlertMessage("Пожалуйста, выберите домик.");
+            setShowAlert(true);
+            return;
+        }
+
+        const formattedCheckIn  = checkIn  ? format(checkIn,  "yyyy-MM-dd") : null;
         const formattedCheckOut = checkOut ? format(checkOut, "yyyy-MM-dd") : null;
 
-        //const saunaTimes = Object.values(selectedSaunaSlots).flatMap((set) => Array.from(set));
-
-        //const totalSum = calculateTotal();
-
-        const submissionData = {
-            checkIn: formattedCheckIn,
+        const payload = {
+            houseID: selectedHouseId,
+            guest: {
+                name:  contacts.name,
+                phone: contacts.phone,
+                email: contacts.email,
+            },
+            checkIn:  formattedCheckIn,
             checkOut: formattedCheckOut,
-            selectedHouse: selectedHouseId,
-            //saunaTimes,
-            //addTub,
-            //fillId: addTub ? selectedFillId : null,
-            //total: totalSum,
+            guestsCount: guestCount,
         };
 
-        console.log("Отправка данных:", submissionData);
+        try {
+            const res = await fetch("http://localhost:8080/reservation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
 
-        setCheckIn(null);
-        setCheckOut(null);
-        setSelectedHouseId(null);
-        setSelectedSaunaSlots({});
-        setAddTub(false);
-        setSelectedFillId(0);
-        setPage(0);
-        setShowSuccess(true);
+            if (!res.ok) {
+                const msg = (await res.text()) || res.statusText;
+                console.error("Ошибка бронирования:", msg);
+                setAlertMessage("Вы не можете отправить данные бронирования, пока не подтвердили свою личность.");
+                setShowAlert(true);
+                return;
+            }
+
+            setShowSuccess(true);
+
+            setCheckIn(null);
+            setCheckOut(null);
+            setSelectedHouseId(null);
+            setSelectedSaunaSlots({});
+            setAddTub(false);
+            setSelectedFillId(0);
+            setPage(0);
+            setGuestCount(2);
+            setContacts({ name: "", phone: "", email: "" });
+        } catch (err) {
+            console.error("Сетевая ошибка:", err);
+            setAlertMessage("Сетевая ошибка, попробуйте позднее.");
+            setShowAlert(true);
+        }
     };
 
     const pageTitles = ["Выберите домик", "Баня и чан", "Контакты"];
@@ -228,7 +269,7 @@ export default function Reservation() {
                                 severity="warning"
                                 sx={{ width: "100%" }}
                             >
-                                {page === 0 ? "Пожалуйста, выберите даты и домик перед переходом." : "Минимальное время аренды бани — 2 часа."}
+                                {alertMessage}
                             </Alert>
                         </Snackbar>
 
@@ -289,6 +330,7 @@ export default function Reservation() {
                                     summary={summary}
                                     onVerified={(code) => setVerificationCode(code)}
                                     onFinalSubmit={handleFinalSubmit}
+                                    onContactChange={setContacts}
                                 />
                             );
                         })()}

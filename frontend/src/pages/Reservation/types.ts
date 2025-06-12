@@ -62,4 +62,5 @@ export interface ContactSectionProps {
     onSubmitted?: () => void;
     onFinalSubmit: () => void;
     summary: BookingSummary;
+    onContactChange: (contacts: { name: string; phone: string; email: string }) => void;
 }

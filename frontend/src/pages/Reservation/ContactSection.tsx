@@ -1,6 +1,6 @@
 import styled from "styled-components";
 import { Button } from "../../components/common/Button.tsx";
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useState, useEffect } from "react";
 import TextField from "@mui/material/TextField";
 import QRCode from "react-qr-code";
 import { FlexWrapper } from "../../components/common/FlexWrapper";
@@ -25,6 +25,7 @@ export default function ContactSection(
     {
         onVerified,
         onFinalSubmit,
+        onContactChange,
         summary,
     }: ContactSectionProps) {
     const [name, setName] = useState("");
@@ -48,6 +49,10 @@ export default function ContactSection(
         addTub,
         selectedFillId,
     } = summary;
+
+    useEffect(() => {
+        onContactChange({ name, phone: `+${phone.replace(/\D/g, "")}`, email });
+    }, [name, phone, email, onContactChange]);
 
     const handleSubmit = useCallback(
         async (e: React.FormEvent) => {

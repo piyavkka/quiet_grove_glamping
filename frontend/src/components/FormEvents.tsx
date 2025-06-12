@@ -81,18 +81,32 @@ export default function FormEvents({ onSubmitted }: FormEventsProps) {
         setGuestsCount(Math.min(30, Math.max(1, Number(e.target.value))));
 
     const handleSubmit = useCallback(
-        (e: React.FormEvent) => {
+        async (e: React.FormEvent) => {
             e.preventDefault();
-            if (!isFormValid) {
-                return;
-            }
-            console.log({
-                name,
-                phone: `+${phone.replace(/\D/g, "")}`,
-                checkIn: checkIn ? format(checkIn, "yyyy-MM-dd") : null,
+            if (!isFormValid) return;
+
+            const payload = {
+                name: name.trim(),
+                phone: `+${phone.replace(/\D/g, '')}`,
+                checkIn: checkIn ? format(checkIn, 'yyyy-MM-dd') : null,
                 guestsCount,
-            });
-            onSubmitted?.();
+            };
+
+            try {
+                const res = await fetch('http://localhost:8080/events', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                if (res.ok) {
+                    onSubmitted?.();
+                } else {
+                    console.error(`Ошибка сервера: ${res.status} ${res.statusText}`);
+                }
+            } catch (err) {
+                console.error("Не удалось отправить запрос:", err);
+            }
         },
         [name, phone, checkIn, guestsCount, isFormValid, onSubmitted]
     );
